@@ -1,0 +1,11 @@
+aiofiles==0.6.0
+bcrypt==3.2.0
+dataclasses_json==0.5.2
+fastapi==0.63.0
+jinja2==2.11.3
+pandas==1.2.3
+python-multipart==0.0.5
+requests==2.25.1
+sqlalchemy==1.4.4
+uvicorn==0.13.4
+wtforms==2.3.3

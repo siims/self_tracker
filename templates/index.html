@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>tap time</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.min.css">
+    <script src="static/js/vendor/jquery-3.3.1.min.js"></script>
+    <style>
+        .notification {
+            padding: 1rem 0.7rem;
+        }
+
+        .task {
+            display: inline-block;
+            width: 12rem;
+            cursor: default;
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            margin-right: 0.5rem;
+        }
+
+        .task .is-6 {
+            min-height: 3.7rem;
+        }
+
+        .task > :not(.title) {
+            display: flex;
+            width: 100%;
+        }
+
+        .untap {
+            display: inline-block;
+            margin-bottom: 0;
+            width: 40px;
+            height: 40px;
+            line-height: 40px;
+            vertical-align: middle;
+            text-align: center;
+            user-select: none;
+            -moz-user-select: none;
+            -webkit-user-select: none;
+
+            font-weight: 900;
+        }
+
+        .duration {
+            flex-grow: 1;
+            height: 40px;
+            line-height: 40px;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .title:not(:last-child) {
+            margin-bottom: 0.5rem;
+        }
+
+        .notification:not(:last-child) {
+            margin-bottom: 0.8rem;
+        }
+
+        .column {
+            padding: 0.4rem;
+        }
+
+        .section {
+            padding: 1.2rem;
+        }
+    </style>
+    <script>
+        function formatDuration(minutes) {
+            return formatIntLength(minutes / 60, 2) + ":" + formatIntLength(minutes % 60, 2);
+
+            function formatIntLength(num, length) {
+                var r = "" + parseInt(num);
+                while (r.length < length) {
+                    r = "0" + r;
+                }
+                return r;
+            }
+        }
+
+        function getCssIdFromName(name) {
+            return btoa(name).replaceAll("=", "");
+        }
+
+        function createCssIdsForTasks(tasks) {
+            let new_tasks = JSON.parse(JSON.stringify(tasks))
+            Object.values(new_tasks).forEach(task => {
+                task.id = getCssIdFromName(task.name);
+            });
+            return new_tasks;
+        }
+
+        function addTaskIdsToForm(tasks) {
+            for (let task of Object.values(tasks)) {
+                $("div").filter((_, el) => $(el).text() === task.name).parent()[0].id = `task_${task.id}`
+            }
+        }
+
+        function addTask(formData) {
+            console.log(formData)
+            $.post("/time_tap", JSON.stringify({
+                "name": formData.name.value,
+                "date": formData.target_date.value,
+                "worker": formData.worker.value
+            })).done((res) => {
+                formData.name.value = ""
+                window.location.reload();
+            });
+        }
+    </script>
+</head>
+<body>
+<nav class="navbar" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+        <a class="navbar-item" href="#">
+
+            <h4 class="sum_of_all_tasks title is-4"></h4>
+        </a>
+
+    </div>
+
+    <div class="navbar-menu is-active" id="navMenu">
+        <div class="navbar-end">
+
+            <div class="navbar-item">
+                <div class="columns">
+                    <div class="column">
+
+                        <form class="field has-addons"
+                              action="javascript:;" onsubmit='return addTask(this);'
+                              method="post">
+                            <div class="control" style="width:100%;">
+
+                                <input class="input" name="name" type="text" placeholder="Task name">
+                                <input class="input" name="target_date" type="hidden" value="{{ target_date }}">
+                                <input class="input" name="worker" type="hidden" value="{{ worker }}">
+
+                            </div>
+                            <div class="control">
+
+                                <input type="submit" class="button is-success" value="add">
+                            </div>
+                        </form>
+
+                        <div class="field">
+                            <div class="control" style="display: table; width: 100%;">
+                                <div class="select" style="display: table-cell; width: 45%; padding-right: 0.5rem;">
+                                    <select style="width: 100%;"
+                                            onchange="this.options[this.selectedIndex].value && (window.location = '/?target_date={{ target_date }}&worker='+this.options[this.selectedIndex].value);">
+                                        <option value=" ">Everyone</option>
+                                        {% for worker_in_list in workers %}
+                                            <option value="{{ worker_in_list }}"
+                                                    {% if worker_in_list == worker %}
+                                                    selected="selected"
+                                                    {% endif %} >{{ worker_in_list }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <a class="button" style="display: table-cell;"
+                                   href="/?target_date={{ previous_period_start }}&worker={{ worker }}">
+                                  <span class="icon is-small">
+                                    <i class="fa fa-angle-left"></i>
+                                  </span>
+                                </a>
+                                <a class="button is-white" style="display: table-cell;">{{ target_date }}</a>
+
+                                <a style="display: table-cell;"
+                                   href="/?target_date={{ next_period_start }}&worker={{ worker }}"
+                                   class="button">
+                                  <span class="icon is-small">
+                                   <i class="fa fa-angle-right"></i>
+                                  </span>
+                                </a>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="columns">
+            <div class="column">
+                {% for task in tasks %}
+                    <div class="task notification is-info">
+                        <div class="title is-6">{{ task.name }}</div>
+                        <div>
+                            <div class="untap is-4">-</div>
+                            <div class="duration title is-4">00:00</div>
+                        </div>
+                        <form
+                                action="/time_tap?target_date={{ target_date }}&worker={{ worker }}"
+                                method="post">
+                            <input type="hidden" name="taskName" value="{{ task.name }}">
+                            <input type="hidden" name="worker" value="{{ worker }}">
+                            <input type="hidden" name="taskDate" value="{{ target_date }}">
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var tasks = {
+        {% for task in tasks %}"{{task.name}}":
+            {"id": null, "name": "{{task.name}}", "duration": {{task.duration}}},{% endfor %}
+    };
+
+    var worker = "{{worker}}";
+    var selectedDate = "{{target_date}}";
+
+    window.onload = function () {
+
+        tasks = createCssIdsForTasks(tasks);
+        addTaskIdsToForm(tasks);
+
+        displayTasksTimes(tasks);
+        displayTasksTotal();
+        addClickHandlersToTasks(tasks);
+        addClickHandlersToUntapBtn(tasks);
+
+
+        function displayTasksTimes(taskList) {
+            $.each(taskList, function (taskName, task) {
+                $('#task_' + task.id + " .duration").text(formatDuration(task.duration));
+            });
+        }
+
+        function addClickHandlersToTasks(taskList) {
+            $.each(taskList, function (taskName, task) {
+                $('#task_' + task.id).click(function (evt) {
+                    handleTaskClick(taskName, worker, selectedDate)
+                })
+            });
+        }
+
+        function addClickHandlersToUntapBtn(taskList) {
+            $.each(taskList, function (taskName, task) {
+                $('#task_' + task.id + ' .untap').click(function (evt) {
+                    evt.stopPropagation();
+                    console.log("removed click", evt);
+                    handleUntap(taskName, worker, selectedDate)
+                })
+            });
+        }
+
+        function handleTaskClick(taskName, worker, date) {
+            if (worker === "") {
+                return;
+            }
+            $.post("/time_tap", JSON.stringify({
+                "name": taskName,
+                "date": date,
+                "worker": worker
+            })).done(updateTask);
+        }
+
+        function handleUntap(taskName, worker, date) {
+            if (worker === "") {
+                return;
+            }
+            $.ajax({
+                url: "/time_tap?target_date=" + date + "&worker=" + worker,
+                type: "DELETE",
+                data: JSON.stringify({
+                    "name": taskName,
+                    "date": date,
+                    "worker": worker
+                }),
+                success: updateTask
+            });
+        }
+
+        function updateTask(newTaskState) {
+            var task = tasks[newTaskState.name];
+            task.duration = newTaskState.duration;
+            $('#task_' + task.id + " .duration").text(formatDuration(task.duration));
+            displayTasksTotal()
+        }
+
+        function displayTasksTotal() {
+            var minuteTotal = 0;
+            $.each(tasks, function (_, task) {
+                minuteTotal += task.duration
+            });
+
+            $(".sum_of_all_tasks").text("tap time -> " + formatDuration(minuteTotal));
+        }
+    };
+</script>
+
+</body>
+</html>
