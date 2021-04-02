@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import func
+from starlette.responses import RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -81,6 +82,9 @@ async def get_all_time_taps(worker: str):
                                     "duration": item.duration}}, time_taps), {})
     return jsonable_encoder(res)
 
+@app.get("/favicon.ico")
+async def get_favicon():
+    return RedirectResponse("/static/favicon.ico")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
