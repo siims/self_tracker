@@ -42,10 +42,12 @@ def fetch_time_taps(
         name: Optional[str] = None
 ) -> List[TimeTapView]:
     where = []
+    group_by = [TimeTap.name]
     if worker is not None:
         where.append(TimeTap.worker == worker)
     if target_date is not None:
         where.append(TimeTap.date == target_date)
+        group_by.append(TimeTap.date)
     if first_date is not None:
         where.append(TimeTap.date >= first_date)
     if last_date is not None:
@@ -60,7 +62,7 @@ def fetch_time_taps(
     ).where(
         *where
     ).group_by(
-        TimeTap.name, TimeTap.date
+        *group_by
     ).all()
     return [TimeTapView(name=x.name, duration=x.duration) for x in res]
 
