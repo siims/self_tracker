@@ -1,9 +1,9 @@
+import datetime
 from typing import Optional
 
 from pydantic import BaseModel
+from sqlalchemy import Column, String, Integer, Text, Date, DateTime, Index, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, String, Float, Integer, Text, Date, DateTime, create_engine, Index, Boolean
-import datetime
 
 Base = declarative_base()
 
@@ -15,6 +15,7 @@ class TimeTapDto(BaseModel):
 
 
 class NoteTapDto(BaseModel):
+    id: Optional[str]
     type: Optional[str]
     description: str
     worker: str
@@ -37,6 +38,7 @@ class TimeTap(AbstractTap):
     name = Column(Text, nullable=False, index=True)
     minutes = Column(Integer, default=0)
 
+
 Index('time_tap_worker_x_date', TimeTap.worker, TimeTap.date)
 Index('time_tap_worker_x_date_x_name', TimeTap.worker, TimeTap.date, TimeTap.name)
 
@@ -46,5 +48,3 @@ class NoteTap(AbstractTap):
 
     type = Column(Text, index=True)
     description = Column(Text, nullable=False)
-
-

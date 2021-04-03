@@ -11,12 +11,14 @@ class TimeTapView:
     name: str
     duration: int
 
+
 @dataclass_json
 @dataclass
 class NoteTapView:
     id: int
     type: str
     description: str
+
 
 @dataclass_json
 @dataclass
@@ -26,6 +28,5 @@ class MainTemplateData:
     note_taps: List[NoteTapView]
     worker: str
     workers: List[str]
-    previous_period_start: datetime.date # = periodStart.minusDays(1)
-    next_period_start: datetime.date# = periodStart.plusDays(1)
-    formattedSumOverFilteredTasks: str# = tasks.map { task -> task.durationInMinutes }.sum().formatMinutes()
+    previous_period_start: datetime.date
+    next_period_start: datetime.date
