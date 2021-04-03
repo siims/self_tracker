@@ -1,11 +1,11 @@
 import datetime
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
-from models import Base, TimeTap, NoteTap, NoteTapDto, TimeTapDto
-from views import TimeTapView, NoteTapView
+from models import Base, TimeTap, NoteTap, NoteTapDto, TimeTapDto, MedicationTap, Medication, MedicationTapDto
+from views import TimeTapView, NoteTapView, MedicationTapView
 
 engine = create_engine(
     "sqlite:///app.db",
@@ -27,7 +27,7 @@ def fetch_time_tap(
         target_date: Optional[datetime.date] = None,
         name: Optional[str] = None
 ) -> Optional[TimeTapView]:
-    res = fetch_time_taps(worker, target_date, name)
+    res = fetch_time_taps(worker=worker, target_date=target_date, name=name)
     if len(res) == 0:
         return None
     else:
@@ -76,6 +76,57 @@ def add_time_tap(time_tap: TimeTapDto, minutes: int) -> None:
     session.commit()
 
 
+def fetch_medication_taps(
+        worker: Optional[str] = None,
+        date: Optional[datetime.date] = None,
+        name: Optional[str] = None
+) -> List[Any]:
+    where = [MedicationTap.is_deleted == False]
+    if worker is not None:
+        where.append(MedicationTap.worker == worker)
+    if date is not None:
+        where.append(MedicationTap.date == date)
+    if name is not None:
+        where.append(Medication.name == name)
+    res = session.query(MedicationTap, Medication).join(Medication).where(*where).all()
+    return res
+
+
+def get_medication_views(
+        worker: Optional[str] = None,
+        date: Optional[datetime.date] = None,
+        name: Optional[str] = None
+) -> List[MedicationTapView]:
+    medication_taps = fetch_medication_taps(worker=worker, date=date, name=name)
+
+    return [
+        MedicationTapView(name=tap["Medication"].name, doses=tap["MedicationTap"].doses)
+        for tap in medication_taps
+    ]
+
+
+def update_medication_tap(medication_tap: MedicationTapDto, dose_taken: int) -> MedicationTapView:
+    medication = session.query(Medication).where(Medication.name == medication_tap.name).first()
+    new_tap = session.query(MedicationTap).where(
+        MedicationTap.worker == medication_tap.worker,
+        MedicationTap.date == medication_tap.date,
+        MedicationTap.medication == medication.id
+    ).one_or_none()
+
+    if new_tap is None:
+        new_tap = MedicationTap(
+            worker=medication_tap.worker,
+            date=medication_tap.date,
+            doses=1,
+            medication=medication.id)
+        session.add(new_tap)
+    else:
+        new_tap.doses += dose_taken
+    session.commit()
+
+    return MedicationTapView(name=medication_tap.name, doses=new_tap.doses)
+
+
 def get_unused_time_tap_blocks_for_day(used_time_tap_names: List[str]) -> List[TimeTapView]:
     missing_tap_names = list(set(fetch_all_task_names()) - set(used_time_tap_names))
     unsused_time_tap_views = [TimeTapView(name=name, duration=0) for name in missing_tap_names]
@@ -83,8 +134,19 @@ def get_unused_time_tap_blocks_for_day(used_time_tap_names: List[str]) -> List[T
     return unsused_time_tap_views
 
 
+def get_unused_medication_tap_blocks_for_day(used_medication_tap_names: List[str]) -> List[MedicationTapView]:
+    missing_tap_names = list(set(fetch_all_medication_names()) - set(used_medication_tap_names))
+    unsused_medication_tap_views = [MedicationTapView(name=name, doses=0) for name in missing_tap_names]
+    unsused_medication_tap_views.sort(key=lambda x: x.name)
+    return unsused_medication_tap_views
+
+
 def fetch_all_task_names() -> List[str]:
     return [task.name for task in session.query(TimeTap.name).group_by(TimeTap.name).all()]
+
+
+def fetch_all_medication_names() -> List[str]:
+    return [medication.name for medication in session.query(Medication).all()]
 
 
 def fetch_all_workers() -> List[str]:
@@ -131,6 +193,6 @@ def delete_note_tap(note: NoteTapDto):
         *where
     ).all()
     if len(notes) == 0:
-        raise InvalidInputException(f"Note doesn't exist: {note.to_dict()}")
+        raise InvalidInputException(f"Note doesn't exist: {note}")
     notes[0].is_deleted = True
     session.commit()

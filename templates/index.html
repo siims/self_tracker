@@ -87,17 +87,17 @@
             return btoa(name).replaceAll("=", "");
         }
 
-        function createCssIdsForTasks(time_taps) {
-            let new_tasks = JSON.parse(JSON.stringify(time_taps))
+        function createCssIdsForTasks(timeTaps) {
+            let new_tasks = JSON.parse(JSON.stringify(timeTaps))
             Object.values(new_tasks).forEach(task => {
                 task.id = getCssIdFromName(task.name);
             });
             return new_tasks;
         }
 
-        function addTaskIdsToForm(time_taps) {
-            for (let task of Object.values(time_taps)) {
-                $("div").filter((_, el) => $(el).text() === task.name).parent()[0].id = `task_${task.id}`
+        function addTaskIdsToForm(timeTaps, idPrefix) {
+            for (let task of Object.values(timeTaps)) {
+                $("div").filter((_, el) => $(el).text() === task.name).parent()[0].id = `${idPrefix}_${task.id}`
             }
         }
 
@@ -224,7 +224,8 @@
         <div class="columns">
             <div class="column">
                 {% for task in note_taps %}
-                    <div id="note_task_{{ task.id }}" class="task notification is-info" style="background-color: goldenrod">
+                    <div id="note_task_{{ task.id }}" class="task notification is-info"
+                         style="background-color: goldenrod">
                         <div class="title is-6">{{ task.description }}</div>
                         <div>
                             <div class="untap is-4">-</div>
@@ -247,55 +248,85 @@
                         </form>
                     </div>
                 {% endfor %}
+                {% for task in medication_taps %}
+                    <div class="task notification is-info" style="background-color: lightpink">
+                        <div class="title is-6">{{ task.name }}</div>
+                        <div>
+                            <div class="untap is-4">-</div>
+                            <div class="duration title is-4">{{ task.doses }}</div>
+                        </div>
+                        <form
+                                action="/count_tap?target_date={{ target_date }}&worker={{ worker }}"
+                                method="post">
+                            <input type="hidden" name="name" value="{{ task.name }}">
+                            <input type="hidden" name="worker" value="{{ worker }}">
+                            <input type="hidden" name="taskDate" value="{{ target_date }}">
+                        </form>
+                    </div>
+                {% endfor %}
             </div>
         </div>
     </div>
 </section>
 
 <script type="text/javascript">
-    var time_taps = {
+    let timeTaps = {
         {% for task in time_taps %}"{{task.name}}":
             {"id": null, "name": "{{task.name}}", "duration": {{task.duration}}},{% endfor %}
     };
-    var note_taps = {
+    let noteTaps = {
         {% for task in note_taps %}"{{task.id}}":
-            {"id": "{{task.id}}", "type": "{% if task.type != None %}{{task.type}}{% endif %}", "description": "{{task.description}}"},{% endfor %}
+            {
+                "id": "{{task.id}}",
+                "type": "{% if task.type != None %}{{task.type}}{% endif %}",
+                "description": "{{task.description}}"
+            },{% endfor %}
     };
+    let medicationTaps = {
+        {% for task in medication_taps %}"{{task.name}}":
+            {"id": null, "name": "{{task.name}}", "doeses": "{{ task.doses }}"},{% endfor %}
+    };
+    let timeTapCssIdPrefix = "task";
+    let medicationDoesTapCssIdPrefix = "medication_tap";
 
-    var worker = "{{worker}}";
-    var selectedDate = "{{target_date}}";
+    let worker = "{{worker}}";
+    let selectedDate = "{{target_date}}";
 
     window.onload = function () {
 
-        time_taps = createCssIdsForTasks(time_taps);
-        addTaskIdsToForm(time_taps);
+        timeTaps = createCssIdsForTasks(timeTaps);
+        medicationTaps = createCssIdsForTasks(medicationTaps);
+        addTaskIdsToForm(timeTaps, timeTapCssIdPrefix);
+        addTaskIdsToForm(medicationTaps, medicationDoesTapCssIdPrefix);
 
-        displayTasksTimes(time_taps);
+        displayTasksTimes(timeTaps);
         displayTasksTotal();
-        addClickHandlersToTasks(time_taps);
-        addClickHandlersToUntapBtn(time_taps);
-        addClickHandlersToNoteUntapBtn(note_taps);
+        addClickHandlersToCountTasks(timeTaps, timeTapCssIdPrefix, handleTimeTap);
+        addClickHandlersToCountTasks(medicationTaps, medicationDoesTapCssIdPrefix, handleMedicationDoseTap);
+        addClickHandlersToUntapBtn(timeTaps, timeTapCssIdPrefix, handleTimeUntap);
+        addClickHandlersToUntapBtn(medicationTaps, medicationDoesTapCssIdPrefix, handleMedicationDoseUntap);
+        addClickHandlersToNoteUntapBtn(noteTaps);
 
 
         function displayTasksTimes(taskList) {
             $.each(taskList, function (taskName, task) {
-                $('#task_' + task.id + " .duration").text(formatDuration(task.duration));
+                $(`#${timeTapCssIdPrefix}_${task.id} .duration`).text(formatDuration(task.duration));
             });
         }
 
-        function addClickHandlersToTasks(taskList) {
+        function addClickHandlersToCountTasks(taskList, cssIdPrefix, clickHandler) {
             $.each(taskList, function (taskName, task) {
-                $('#task_' + task.id).click(function (evt) {
-                    handleTaskClick(taskName, worker, selectedDate)
+                $(`#${cssIdPrefix}_${task.id}`).click(function (evt) {
+                    clickHandler(taskName, worker, selectedDate)
                 })
             });
         }
 
-        function addClickHandlersToUntapBtn(taskList) {
+        function addClickHandlersToUntapBtn(taskList, cssIdPrefix, clickHandler) {
             $.each(taskList, function (taskName, task) {
-                $('#task_' + task.id + ' .untap').click(function (evt) {
+                $(`#${cssIdPrefix}_${task.id} .untap`).click(function (evt) {
                     evt.stopPropagation();
-                    handleUntap(taskName, worker, selectedDate)
+                    clickHandler(taskName, worker, selectedDate)
                 })
             });
         }
@@ -322,7 +353,7 @@
             });
         }
 
-        function handleTaskClick(taskName, worker, date) {
+        function handleTimeTap(taskName, worker, date) {
             if (worker === "") {
                 return;
             }
@@ -333,7 +364,18 @@
             })).done(updateTask);
         }
 
-        function handleUntap(taskName, worker, date) {
+        function handleMedicationDoseTap(medication, worker, date) {
+            if (worker === "") {
+                return;
+            }
+            $.post("/medication_tap", JSON.stringify({
+                "name": medication,
+                "date": date,
+                "worker": worker
+            })).done(updateMedicationTap);
+        }
+
+        function handleTimeUntap(taskName, worker, date) {
             if (worker === "") {
                 return;
             }
@@ -349,16 +391,38 @@
             });
         }
 
+        function handleMedicationDoseUntap(taskName, worker, date) {
+            if (worker === "") {
+                return;
+            }
+            $.ajax({
+                url: `/medication_tap?target_date=${date}&worker=${worker}`,
+                type: "DELETE",
+                data: JSON.stringify({
+                    "name": taskName,
+                    "date": date,
+                    "worker": worker
+                }),
+                success: updateMedicationTap
+            });
+        }
+
         function updateTask(newTaskState) {
-            var task = time_taps[newTaskState.name];
+            var task = timeTaps[newTaskState.name];
             task.duration = newTaskState.duration;
-            $('#task_' + task.id + " .duration").text(formatDuration(task.duration));
+            $(`#${timeTapCssIdPrefix}_${task.id} .duration`).text(formatDuration(task.duration));
             displayTasksTotal()
+        }
+
+        function updateMedicationTap(newTaskState) {
+            var task = medicationTaps[newTaskState.name];
+            task.doses = newTaskState.doses;
+            $(`#${medicationDoesTapCssIdPrefix}_${task.id} .duration`).text(task.doses);
         }
 
         function displayTasksTotal() {
             var minuteTotal = 0;
-            $.each(time_taps, function (_, task) {
+            $.each(timeTaps, function (_, task) {
                 minuteTotal += task.duration
             });
 

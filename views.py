@@ -22,10 +22,18 @@ class NoteTapView:
 
 @dataclass_json
 @dataclass
+class MedicationTapView:
+    name: str
+    doses: int
+
+
+@dataclass_json
+@dataclass
 class MainTemplateData:
     target_date: datetime.date
     time_taps: List[TimeTapView]
     note_taps: List[NoteTapView]
+    medication_taps: List[MedicationTapView]
     worker: str
     workers: List[str]
     previous_period_start: datetime.date
