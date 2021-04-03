@@ -7,15 +7,23 @@ from dataclasses_json import dataclass_json
 
 @dataclass_json
 @dataclass
-class TaskView:
+class TimeTapView:
     name: str
     duration: int
 
 @dataclass_json
 @dataclass
+class NoteTapView:
+    id: int
+    type: str
+    description: str
+
+@dataclass_json
+@dataclass
 class MainTemplateData:
     target_date: datetime.date
-    tasks: List[TaskView]
+    time_taps: List[TimeTapView]
+    note_taps: List[NoteTapView]
     worker: str
     workers: List[str]
     previous_period_start: datetime.date # = periodStart.minusDays(1)

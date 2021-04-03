@@ -1,17 +1,15 @@
 import datetime
-from functools import reduce
 
 import uvicorn
-from fastapi import FastAPI, Request
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy import func
+from fastapi import FastAPI, Request, HTTPException
+from sqlalchemy import desc
 from starlette.responses import RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from dao import session, fetch_time_taps, fetch_all_task_names, fetch_time_tap, fetch_all_workers
-from models import TimeTap, TimeTapDto
-from views import MainTemplateData, TaskView
+from models import TimeTap, TimeTapDto, NoteTapDto, NoteTap
+from views import MainTemplateData, TimeTapView, NoteTapView
 
 templates = Jinja2Templates(directory="templates/")
 
@@ -21,16 +19,20 @@ app = FastAPI()
 @app.get("/")
 async def homepage(request: Request, worker: str, target_date: datetime.date = datetime.date.today()):
     time_taps = fetch_time_taps(worker=worker, target_date=target_date)
-    time_taps = [TaskView(name=item.name, duration=item.duration) for item in time_taps]
-    missing_task_names = [TaskView(name=name, duration=0) for name in
-                          set(fetch_all_task_names()) - set([tap.name for tap in time_taps])]
+    time_tap_views = [TimeTapView(name=item.name, duration=item.duration) for item in time_taps]
+    missing_tap_names = list(set(fetch_all_task_names()) - set([tap.name for tap in time_tap_views]))
+    missing_time_tap_views = [TimeTapView(name=name, duration=0) for name in missing_tap_names]
+    missing_time_tap_views.sort(key=lambda x: x.name)
+
+    note_taps = [NoteTapView(id=e.id, type=e.type, description=e.description) for e in session.query(NoteTap).where(NoteTap.worker == worker, NoteTap.date == target_date, NoteTap.is_deleted == False).all()]
     return templates.TemplateResponse(
         "index.html",
         context={
             "request": request,
             **MainTemplateData(
                 target_date=target_date,
-                tasks=time_taps + missing_task_names,
+                time_taps=time_tap_views + missing_time_tap_views,
+                note_taps=note_taps,
                 worker=worker,
                 workers=fetch_all_workers(),
                 previous_period_start=target_date + datetime.timedelta(days=-1),
@@ -69,24 +71,44 @@ async def delete_time_tap(time_tap: TimeTapDto):
     return fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
 
 
-@app.get("/time_tap")
-async def get_all_time_taps(worker: str):
-    time_taps = session.query(
-        TimeTap,
-        func.sum(TimeTap.minutes).label("duration"),
-        func.max(TimeTap.created).label("last_created")
-    ).where(
-        TimeTap.worker == worker).group_by("task_name", "target_date").all()
-    res = reduce(lambda x, y: {**x, **y}, map(lambda item: {
-        item["TimeTap"].task_name: {"id": item["TimeTap"].task_name, "name": item["TimeTap"].task_name,
-                                    "duration": item.duration}}, time_taps), {})
-    return jsonable_encoder(res)
+@app.post("/note_tap")
+async def post_a_note(note: NoteTapDto):
+    new_tap = NoteTap(
+        worker=note.worker,
+        date=note.date,
+        type=note.type,
+        description=note.description,
+    )
+    session.add(new_tap)
+    session.commit()
+
+    return session.query(NoteTap).where(
+        NoteTap.worker == note.worker, NoteTap.date == note.date, NoteTap.type == note.type, NoteTap.is_deleted == False
+    ).order_by(
+        desc(NoteTap.created)
+    ).limit(1).one_or_none()
+
+
+@app.delete("/note_tap")
+async def post_a_note(note: NoteTapDto):
+    where = [NoteTap.worker == note.worker, NoteTap.date == note.date, NoteTap.description == note.description, NoteTap.is_deleted == False]
+    if note.type is None:
+        where.append(NoteTap.type == note.type)
+    notes = session.query(NoteTap).where(
+        *where
+    ).all()
+    if len(notes) == 0:
+        raise HTTPException(status_code=400, detail="Invalid input")
+    notes[0].is_deleted=True
+    session.commit()
+
 
 @app.get("/favicon.ico")
 async def get_favicon():
     return RedirectResponse("/static/favicon.ico")
 
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-if __name__ == "__main__": # for debugging
+if __name__ == "__main__":  # for debugging
     uvicorn.run(app, host="0.0.0.0", port=8000)

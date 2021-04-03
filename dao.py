@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
 from models import Base, TimeTap
-from views import TaskView
+from views import TimeTapView
 
 engine = create_engine(
     "sqlite:///app.db",
@@ -22,19 +22,19 @@ def fetch_time_tap(
         worker: Optional[str] = None,
         target_date: Optional[datetime.date] = None,
         name: Optional[str] = None
-) -> Optional[TaskView]:
+) -> Optional[TimeTapView]:
     res = fetch_time_taps(worker, target_date, name)
     if len(res) == 0:
         return None
     else:
-        return TaskView(name=res[0].name, duration=res[0].duration)
+        return TimeTapView(name=res[0].name, duration=res[0].duration)
 
 
 def fetch_time_taps(
         worker: Optional[str] = None,
         target_date: Optional[datetime.date] = None,
         name: Optional[str] = None
-) -> List[TaskView]:
+) -> List[TimeTapView]:
     where = []
     if worker is not None:
         where.append(TimeTap.worker == worker)
@@ -52,7 +52,7 @@ def fetch_time_taps(
     ).group_by(
         TimeTap.name, TimeTap.date
     ).all()
-    return [TaskView(name=x.name, duration=x.duration) for x in res]
+    return [TimeTapView(name=x.name, duration=x.duration) for x in res]
 
 
 def fetch_all_task_names() -> List[str]:

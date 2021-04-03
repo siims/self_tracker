@@ -87,28 +87,44 @@
             return btoa(name).replaceAll("=", "");
         }
 
-        function createCssIdsForTasks(tasks) {
-            let new_tasks = JSON.parse(JSON.stringify(tasks))
+        function createCssIdsForTasks(time_taps) {
+            let new_tasks = JSON.parse(JSON.stringify(time_taps))
             Object.values(new_tasks).forEach(task => {
                 task.id = getCssIdFromName(task.name);
             });
             return new_tasks;
         }
 
-        function addTaskIdsToForm(tasks) {
-            for (let task of Object.values(tasks)) {
+        function addTaskIdsToForm(time_taps) {
+            for (let task of Object.values(time_taps)) {
                 $("div").filter((_, el) => $(el).text() === task.name).parent()[0].id = `task_${task.id}`
             }
         }
 
         function addTask(formData) {
-            console.log(formData)
             $.post("/time_tap", JSON.stringify({
                 "name": formData.name.value,
                 "date": formData.target_date.value,
                 "worker": formData.worker.value
             })).done((res) => {
                 formData.name.value = ""
+                window.location.reload();
+            });
+        }
+
+        function addNote(formData) {
+            let request_payload = {
+                "description": formData.description.value,
+                "date": formData.date.value,
+                "worker": formData.worker.value
+            };
+            if (formData.type.value !== "") {
+                request_payload.type = formData.type.value
+            }
+
+            $.post("/note_tap", JSON.stringify(request_payload)).done((res) => {
+                formData.description.value = ""
+                formData.type.value = ""
                 window.location.reload();
             });
         }
@@ -132,12 +148,29 @@
                     <div class="column">
 
                         <form class="field has-addons"
-                              action="javascript:;" onsubmit='return addTask(this);'
+                              action="javascript:" onsubmit='return addTask(this);'
                               method="post">
                             <div class="control" style="width:100%;">
 
                                 <input class="input" name="name" type="text" placeholder="Task name">
                                 <input class="input" name="target_date" type="hidden" value="{{ target_date }}">
+                                <input class="input" name="worker" type="hidden" value="{{ worker }}">
+
+                            </div>
+                            <div class="control">
+
+                                <input type="submit" class="button is-success" value="add">
+                            </div>
+                        </form>
+                        <form class="field has-addons"
+                              action="javascript:" onsubmit='return addNote(this);'
+                              method="post">
+                            <div class="control" style="width:100%;">
+
+                                <input class="input" name="description" type="text"
+                                       placeholder="Note: ... slept a bit badly; feel tired">
+                                <input class="input" name="type" type="text" placeholder="sleep">
+                                <input class="input" name="date" type="hidden" value="{{ target_date }}">
                                 <input class="input" name="worker" type="hidden" value="{{ worker }}">
 
                             </div>
@@ -190,7 +223,15 @@
     <div class="container">
         <div class="columns">
             <div class="column">
-                {% for task in tasks %}
+                {% for task in note_taps %}
+                    <div id="note_task_{{ task.id }}" class="task notification is-info" style="background-color: goldenrod">
+                        <div class="title is-6">{{ task.description }}</div>
+                        <div>
+                            <div class="untap is-4">-</div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% for task in time_taps %}
                     <div class="task notification is-info">
                         <div class="title is-6">{{ task.name }}</div>
                         <div>
@@ -212,9 +253,13 @@
 </section>
 
 <script type="text/javascript">
-    var tasks = {
-        {% for task in tasks %}"{{task.name}}":
+    var time_taps = {
+        {% for task in time_taps %}"{{task.name}}":
             {"id": null, "name": "{{task.name}}", "duration": {{task.duration}}},{% endfor %}
+    };
+    var note_taps = {
+        {% for task in note_taps %}"{{task.id}}":
+            {"id": "{{task.id}}", "type": "{% if task.type != None %}{{task.type}}{% endif %}", "description": "{{task.description}}"},{% endfor %}
     };
 
     var worker = "{{worker}}";
@@ -222,13 +267,14 @@
 
     window.onload = function () {
 
-        tasks = createCssIdsForTasks(tasks);
-        addTaskIdsToForm(tasks);
+        time_taps = createCssIdsForTasks(time_taps);
+        addTaskIdsToForm(time_taps);
 
-        displayTasksTimes(tasks);
+        displayTasksTimes(time_taps);
         displayTasksTotal();
-        addClickHandlersToTasks(tasks);
-        addClickHandlersToUntapBtn(tasks);
+        addClickHandlersToTasks(time_taps);
+        addClickHandlersToUntapBtn(time_taps);
+        addClickHandlersToNoteUntapBtn(note_taps);
 
 
         function displayTasksTimes(taskList) {
@@ -249,8 +295,29 @@
             $.each(taskList, function (taskName, task) {
                 $('#task_' + task.id + ' .untap').click(function (evt) {
                     evt.stopPropagation();
-                    console.log("removed click", evt);
                     handleUntap(taskName, worker, selectedDate)
+                })
+            });
+        }
+
+        function addClickHandlersToNoteUntapBtn(taskList) {
+            $.each(taskList, function (taskId, task) {
+                $('#note_task_' + taskId + ' .untap').click(function (evt) {
+                    evt.stopPropagation();
+                    let request_payload = {
+                        "description": task.description,
+                        "date": selectedDate,
+                        "worker": worker
+                    };
+                    if (task.type != null && task.type !== "") {
+                        request_payload.type = task.type
+                    }
+                    $.ajax({
+                        url: "/note_tap?target_date=" + selectedDate + "&worker=" + worker,
+                        type: "DELETE",
+                        data: JSON.stringify(request_payload),
+                        success: () => window.location.reload()
+                    });
                 })
             });
         }
@@ -283,7 +350,7 @@
         }
 
         function updateTask(newTaskState) {
-            var task = tasks[newTaskState.name];
+            var task = time_taps[newTaskState.name];
             task.duration = newTaskState.duration;
             $('#task_' + task.id + " .duration").text(formatDuration(task.duration));
             displayTasksTotal()
@@ -291,7 +358,7 @@
 
         function displayTasksTotal() {
             var minuteTotal = 0;
-            $.each(tasks, function (_, task) {
+            $.each(time_taps, function (_, task) {
                 minuteTotal += task.duration
             });
 
