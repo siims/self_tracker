@@ -37,6 +37,8 @@ def fetch_time_tap(
 def fetch_time_taps(
         worker: Optional[str] = None,
         target_date: Optional[datetime.date] = None,
+        first_date: Optional[datetime.date] = None,
+        last_date: Optional[datetime.date] = None,
         name: Optional[str] = None
 ) -> List[TimeTapView]:
     where = []
@@ -44,6 +46,10 @@ def fetch_time_taps(
         where.append(TimeTap.worker == worker)
     if target_date is not None:
         where.append(TimeTap.date == target_date)
+    if first_date is not None:
+        where.append(TimeTap.date >= first_date)
+    if last_date is not None:
+        where.append(TimeTap.date <= last_date)
     if name is not None:
         where.append(TimeTap.name == name)
 

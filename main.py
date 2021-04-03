@@ -7,7 +7,7 @@ from starlette.responses import RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from models import TimeTapDto, NoteTapDto
+from models import TimeTapDto, NoteTapDto, TimeTapStatisticsRequestDto
 from tap_service import fetch_time_taps, fetch_time_tap, fetch_all_workers, fetch_note_taps, \
     delete_note_tap, InvalidInputException, add_note_tap, add_time_tap, get_unused_time_tap_blocks_for_day
 from views import MainTemplateData
@@ -40,6 +40,17 @@ async def homepage(request: Request, worker: str, target_date: datetime.date = d
         }
     )
 
+@app.get("/summary")
+async def summary_page(request: Request, worker: str):
+    if worker == "":
+        raise HTTPException(status_code=404)
+    return templates.TemplateResponse(
+        "summary.html",
+        context={
+            "request": request,
+            "worker": worker
+        }
+    )
 
 @app.post("/time_tap")
 async def post_time_tap(time_tap: TimeTapDto):
@@ -75,6 +86,13 @@ async def post_a_note(note: NoteTapDto):
     except InvalidInputException as e:
         log.warning(e)
         raise HTTPException(status_code=400, detail="Invalid input")
+
+
+@app.post("/statistics")
+async def time_tap_statistics(note: TimeTapStatisticsRequestDto):
+    if note.worker == "":
+        raise HTTPException(status_code=400, detail="Invalid input")
+    return fetch_time_taps(worker=note.worker, first_date=note.first_date, last_date=note.last_date)
 
 
 @app.get("/favicon.ico")

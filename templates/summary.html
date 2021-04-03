@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>tap time</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.1/css/bulma.min.css">
+    <script src="static/js/vendor/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"
+            integrity="sha512-qTXRIMyZIFb8iQcfjXWCO8+M5Tbc38Qi5WzdPOYZHIlZpzBHG3L3by84BBBOiRGiEb7KKtAOAs5qYdUiZiQNNQ=="
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"
+            integrity="sha256-t9UJPrESBeG2ojKTIcFLPGF7nHi2vEc7f5A2KpH/UBU=" crossorigin="anonymous"></script>
+</head>
+<body>
+
+<section class="section">
+    <div class="container">
+        <div id="day-buttons"></div>
+        <div id="week-buttons"></div>
+        <div id="two-week-buttons"></div>
+        <div id="month-buttons"></div>
+    </div>
+</section>
+
+<script type="text/javascript">
+
+    let periodType = "week";
+    let periodValue = 0; // 0 for current
+    let workerName = "{{worker}}";
+    let allTasksData = null
+    let chart = null
+
+    const $canvas = $("<canvas/>", {id: "pie-chart"})
+    $("body").append($canvas)
+
+    const createMonthButtons = () => {
+        let numMonthsToReview = 6;
+
+        for (const numMonthBack of new Array(numMonthsToReview).keys()) {
+            let time = moment().add(-numMonthBack, "month");
+            let monthName = null
+            if (time.startOf("month").format('MMMM') === moment().startOf("month").format('MMMM')) {
+                monthName = "This month";
+            } else {
+                monthName = time.startOf("month").format('MMMM');
+            }
+            let startDate = time.startOf("month").format('YYYY-MM-DD');
+            let endDate = time.endOf("month").format('YYYY-MM-DD');
+
+            const button = $("<button/>", {
+                text: monthName
+            })
+            button.on("click", () => {
+                requestTaskStatisticsForPeriod(startDate, endDate, updatePieChart)
+                chart.options.title.text = monthName
+            })
+            $("#month-buttons").append(button)
+        }
+    }
+
+
+    const createTwoWeekButtons = () => {
+        let numTwoWeeksToReview = 4;
+
+        for (const numWeeksBack of new Array(numTwoWeeksToReview).keys()) {
+            let startWeek = moment().add(-numWeeksBack - 1, "week").startOf("week");
+            let endWeek = moment().add(-numWeeksBack, "week").endOf("week");
+            let startDate = startWeek.format('YYYY-MM-DD');
+            let endDate = endWeek.format('YYYY-MM-DD');
+
+            let period = `${startDate} - ${endDate}`
+            const button = $("<button/>", {
+                text: period
+            })
+            button.on("click", () => {
+                requestTaskStatisticsForPeriod(startDate, endDate, updatePieChart)
+                chart.options.title.text = period
+            })
+            $("#two-week-buttons").append(button)
+        }
+    }
+
+
+    const createWeekButtons = () => {
+        let numWeeksToReview = 4;
+
+        for (const numWeeksBack of new Array(numWeeksToReview).keys()) {
+            let time = moment().add(-numWeeksBack, "week");
+            let startDate = time.startOf("week").format('YYYY-MM-DD');
+            let endDate = time.endOf("week").format('YYYY-MM-DD');
+
+            let weekName = numWeeksBack === 0 ? "This week" : `${numWeeksBack} week${numWeeksBack !== 1 ? "s" : ""} back`;
+            const button = $("<button/>", {
+                text: weekName
+            })
+            button.on("click", () => {
+                requestTaskStatisticsForPeriod(startDate, endDate, updatePieChart)
+                chart.options.title.text = weekName
+            })
+            $("#week-buttons").append(button)
+        }
+    }
+
+
+    const createDayButtons = () => {
+        let numDaysToReview = 7;
+
+        for (const numDaysBack of new Array(numDaysToReview).keys()) {
+            let time = moment().add(-numDaysBack, "day");
+            let day = time.format('YYYY-MM-DD');
+            let weekDayName = time.format('dddd');
+
+            let dateName = numDaysBack === 0 ? "Today" : weekDayName;
+            const button = $("<button/>", {
+                text: dateName
+            })
+            button.on("click", () => {
+                requestTaskStatisticsForPeriod(day, day, updatePieChart)
+                chart.options.title.text = `${dateName} - ${day}`
+            })
+            $("#day-buttons").append(button)
+        }
+    }
+
+
+    const stringToColour = function (str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        let colour = '#';
+        for (let i = 0; i < 3; i++) {
+            let value = (hash >> (i * 8)) & 0xFF;
+            colour += ('00' + value.toString(16)).substr(-2);
+        }
+        return colour;
+    }
+
+
+    const createChartDataObject = (newData) => {
+        return {
+            data: newData.map(item => item.duration / 60),
+            backgroundColor: newData.map(item => stringToColour(item.name)),
+        }
+    }
+
+
+    const createChartLabels = (newData) => {
+        return newData.map(item => item.name)
+    }
+
+
+    requestTaskStatisticsForPeriod("1900-01-01", moment().format('YYYY-MM-DD'), (res) => {
+        allTasksData = {labels: createChartLabels(res), datasets: [createChartDataObject(res)]}
+        chart = new Chart(document.getElementById("pie-chart"), {
+            type: 'pie',
+            data: allTasksData,
+            options: {
+                legend: {
+                    display: true,
+                    fullWidth: false,
+                    position: "top"
+                },
+                title: {
+                    display: true,
+                    text: 'All Tasks'
+                }
+            }
+        });
+    })
+
+
+    function requestTaskStatisticsForPeriod(startDate, endDate, callback) {
+        $.post("/statistics?worker=" + workerName, JSON.stringify({
+            "first_date": startDate,
+            "last_date": endDate,
+            "worker": workerName
+        })).done(callback);
+    }
+
+    function updatePieChart(newData) {
+        chart.data.labels = createChartLabels(newData)
+        chart.data.datasets = [createChartDataObject(newData)]
+        chart.update()
+    }
+
+    function requestNewData(periodType, periodValue) {
+
+        let time = moment().add(periodValue, `${periodType}`);
+        let momentPeriodType = periodType === "week" ? `isoWeek` : periodType;
+        let startDate = time.startOf(momentPeriodType).format('YYYY-MM-DD');
+        let endDate = time.endOf(momentPeriodType).format('YYYY-MM-DD');
+
+        requestTaskStatisticsForPeriod(startDate, endDate, updatePieChart);
+    }
+
+    $("#week-picker, #month-picker").change((evt) => {
+        periodValue = evt.target.value;
+        periodType = evt.target.id.replace("-picker", "")
+        requestNewData(periodType, periodValue)
+    });
+
+    createMonthButtons()
+    createTwoWeekButtons()
+    createWeekButtons()
+    createDayButtons()
+
+    window.onload = function () {
+    };
+</script>
+
+</body>
+</html>

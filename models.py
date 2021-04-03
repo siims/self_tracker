@@ -14,6 +14,18 @@ class TimeTapDto(BaseModel):
     date: datetime.date
 
 
+class TimeTapStatisticsRequestDto(BaseModel):
+    worker: str
+    first_date: datetime.date
+    last_date: datetime.date
+
+
+class TimeTapStatisticsResponseDto(BaseModel):
+    task_name: str
+    minutes: int
+    last_action: datetime.datetime
+
+
 class NoteTapDto(BaseModel):
     id: Optional[str]
     type: Optional[str]
