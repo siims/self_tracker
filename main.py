@@ -43,6 +43,8 @@ async def homepage(request: Request, worker: str, target_date: datetime.date = d
 
 @app.post("/time_tap")
 async def post_time_tap(time_tap: TimeTapDto):
+    if time_tap.worker == "":
+        raise HTTPException(status_code=400, detail="Invalid input")
     add_time_tap(time_tap, minutes=15)
 
     return fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
@@ -50,6 +52,10 @@ async def post_time_tap(time_tap: TimeTapDto):
 
 @app.delete("/time_tap")
 async def delete_time_tap(time_tap: TimeTapDto):
+    tap = fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
+    if tap is not None and tap.duration <= 0:
+        raise HTTPException(status_code=400, detail="Invalid input, cannot have negative total time")
+
     add_time_tap(time_tap, minutes=-15)
 
     return fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
@@ -57,6 +63,8 @@ async def delete_time_tap(time_tap: TimeTapDto):
 
 @app.post("/note_tap")
 async def post_a_note(note: NoteTapDto):
+    if note.worker == "":
+        raise HTTPException(status_code=400, detail="Invalid input")
     return add_note_tap(note)
 
 
