@@ -4,7 +4,8 @@ from typing import List, Optional, Any
 from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
-from models import Base, TimeTap, NoteTap, NoteTapDto, TimeTapDto, MedicationTap, Medication, MedicationTapDto
+from models import Base, TimeTap, NoteTap, NoteTapDto, TimeTapDto, MedicationTap, Medication, MedicationTapDto, \
+    MedicationDto
 from views import TimeTapView, NoteTapView, MedicationTapView
 
 engine = create_engine(
@@ -198,3 +199,10 @@ def delete_note_tap(note: NoteTapDto):
         raise InvalidInputException(f"Note doesn't exist: {note}")
     notes[0].is_deleted = True
     session.commit()
+
+
+def add_medication(medication: MedicationDto) -> None:
+    new_medication = Medication(name=medication.name)
+    session.add(new_medication)
+    session.commit()
+

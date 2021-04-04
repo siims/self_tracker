@@ -14,7 +14,7 @@
 
         .task {
             display: inline-block;
-            width: 12rem;
+            width: 10rem;
             cursor: default;
             user-select: none;
             -moz-user-select: none;
@@ -112,6 +112,15 @@
             });
         }
 
+        function addMedication(formData) {
+            $.post("/medication", JSON.stringify({
+                "name": formData.name.value,
+            })).done((res) => {
+                formData.name.value = ""
+                window.location.reload();
+            });
+        }
+
         function addNote(formData) {
             let request_payload = {
                 "description": formData.description.value,
@@ -146,7 +155,6 @@
             <div class="navbar-item">
                 <div class="columns">
                     <div class="column">
-
                         <form class="field has-addons"
                               action="javascript:" onsubmit='return addTask(this);'
                               method="post">
@@ -163,13 +171,23 @@
                             </div>
                         </form>
                         <form class="field has-addons"
+                              action="javascript:" onsubmit='return addMedication(this);'
+                              method="post">
+                            <div class="control" style="width:100%;">
+                                <input class="input" name="name" type="text" placeholder="Medication name">
+                            </div>
+                            <div class="control">
+                                <input type="submit" class="button is-success" value="add">
+                            </div>
+                        </form>
+                        <form class="field has-addons"
                               action="javascript:" onsubmit='return addNote(this);'
                               method="post">
                             <div class="control" style="width:100%;">
 
                                 <input class="input" name="description" type="text"
-                                       placeholder="Note: ... slept a bit badly; feel tired">
-                                <input class="input" name="type" type="text" placeholder="sleep">
+                                       placeholder="Note: ... slept a bit badly; feel tired" style="width: 70%">
+                                <input class="input" name="type" type="text" placeholder="sleep" style="width: 27%">
                                 <input class="input" name="date" type="hidden" value="{{ target_date }}">
                                 <input class="input" name="worker" type="hidden" value="{{ worker }}">
 

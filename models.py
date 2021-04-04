@@ -15,6 +15,10 @@ class TimeTapDto(BaseModel):
     date: datetime.date
 
 
+class MedicationDto(BaseModel):
+    name: str
+
+
 class MedicationTapDto(BaseModel):
     name: str
     worker: str

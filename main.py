@@ -7,10 +7,10 @@ from starlette.responses import RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from models import TimeTapDto, NoteTapDto, TimeTapStatisticsRequestDto, MedicationTapDto
+from models import TimeTapDto, NoteTapDto, TimeTapStatisticsRequestDto, MedicationTapDto, MedicationDto
 from tap_service import fetch_time_taps, fetch_time_tap, fetch_all_workers, fetch_note_taps, \
     delete_note_tap, InvalidInputException, add_note_tap, add_time_tap, get_unused_time_tap_blocks_for_day, \
-    get_medication_views, update_medication_tap, get_unused_medication_tap_blocks_for_day
+    get_medication_views, update_medication_tap, get_unused_medication_tap_blocks_for_day, add_medication
 from views import MainTemplateData
 
 templates = Jinja2Templates(directory="templates/")
@@ -112,6 +112,11 @@ async def delete_time_tap(medication_tap: MedicationTapDto):
     update_medication_tap(medication_tap, dose_taken=-1)
 
     return get_medication_views(name=medication_tap.name, worker=medication_tap.worker, date=medication_tap.date)[0]
+
+
+@app.post("/medication")
+async def post_medication(medication: MedicationDto):
+    add_medication(medication)
 
 
 @app.post("/statistics")
