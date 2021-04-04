@@ -23,12 +23,19 @@
         }
 
         .task .is-6 {
-            min-height: 3.7rem;
+            min-height: 3.4rem;
         }
 
         .task > :not(.title) {
             display: flex;
             width: 100%;
+        }
+
+        .task > .title { /* see: https://css-tricks.com/line-clampin/#weird-webkit-flexbox-way */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
         }
 
         .untap {
