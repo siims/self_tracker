@@ -1,5 +1,6 @@
 import datetime
 import logging
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
@@ -20,7 +21,9 @@ app = FastAPI()
 
 
 @app.get("/")
-async def homepage(request: Request, worker: str, target_date: datetime.date = datetime.date.today()):
+async def homepage(request: Request, worker: str, target_date: Optional[datetime.date] = None):
+    if target_date is None:
+        target_date = datetime.date.today()
     time_tap_views = fetch_time_taps(worker=worker, target_date=target_date)
     unused_time_tap_views = get_unused_time_tap_blocks_for_day([tap.name for tap in time_tap_views])
     medication_tap_views = get_medication_views(worker=worker, date=target_date)
