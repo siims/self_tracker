@@ -1,11 +1,16 @@
 aiofiles==0.6.0
+authlib==0.15.3 # for oauth
 bcrypt==3.2.0
 dataclasses_json==0.5.2
 fastapi==0.63.0
+httpx # for authlib
+itsdangerous # for authlib
 jinja2==2.11.3
 pandas==1.2.3
+pyjwt==2.0.1
 python-multipart==0.0.5
 requests==2.25.1
 sqlalchemy==1.4.4
+starlette
 uvicorn==0.13.4
 wtforms==2.3.3

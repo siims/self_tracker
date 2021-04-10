@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from dataclasses_json import dataclass_json
 
@@ -34,7 +34,7 @@ class MainTemplateData:
     time_taps: List[TimeTapView]
     note_taps: List[NoteTapView]
     medication_taps: List[MedicationTapView]
-    worker: str
     workers: List[str]
     previous_period_start: datetime.date
     next_period_start: datetime.date
+    user_email: Optional[str]

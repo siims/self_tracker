@@ -144,6 +144,18 @@
                 window.location.reload();
             });
         }
+
+        function logout() {
+            $.get("/logout").done((res) => {
+                $("#login-button").toggle()
+                $("#logout-button").toggle()
+                $.ajaxSetup({
+                    headers: {
+                    }
+                });
+                window.location.reload();
+            });
+        }
     </script>
 </head>
 <body>
@@ -153,7 +165,13 @@
 
             <h4 class="sum_of_all_tasks title is-4"></h4>
         </a>
-
+        <a id="login-button" class="button is-info" href="/login" {% if (user_email != "") %}style="display: none"{% endif %}>
+            Login with Google
+        </a>
+        <form id="logout-button" {% if (user_email == "") %}style="display: none"{% endif %} action="javascript:"
+              onsubmit='return logout();'>
+            <input type="submit" value="Logout {{ user_email }}" class="button is-info">
+        </form>
     </div>
 
     <div class="navbar-menu is-active" id="navMenu">
@@ -169,7 +187,7 @@
 
                                 <input class="input" name="name" type="text" placeholder="Task name">
                                 <input class="input" name="target_date" type="hidden" value="{{ target_date }}">
-                                <input class="input" name="worker" type="hidden" value="{{ worker }}">
+                                <input class="input" name="worker" type="hidden" value="{{ user_email }}">
 
                             </div>
                             <div class="control">
@@ -196,7 +214,7 @@
                                        placeholder="Note: ... slept a bit badly; feel tired" style="width: 70%">
                                 <input class="input" name="type" type="text" placeholder="sleep" style="width: 27%">
                                 <input class="input" name="date" type="hidden" value="{{ target_date }}">
-                                <input class="input" name="worker" type="hidden" value="{{ worker }}">
+                                <input class="input" name="worker" type="hidden" value="{{ user_email }}">
 
                             </div>
                             <div class="control">
@@ -207,20 +225,8 @@
 
                         <div class="field">
                             <div class="control" style="display: table; width: 100%;">
-                                <div class="select" style="display: table-cell; width: 45%; padding-right: 0.5rem;">
-                                    <select style="width: 100%;"
-                                            onchange="this.options[this.selectedIndex].value && (window.location = '/?target_date={{ target_date }}&worker='+this.options[this.selectedIndex].value);">
-                                        <option value=" ">Everyone</option>
-                                        {% for worker_in_list in workers %}
-                                            <option value="{{ worker_in_list }}"
-                                                    {% if worker_in_list == worker %}
-                                                    selected="selected"
-                                                    {% endif %} >{{ worker_in_list }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
                                 <a class="button" style="display: table-cell;"
-                                   href="/?target_date={{ previous_period_start }}&worker={{ worker }}">
+                                   href="/?target_date={{ previous_period_start }}&worker={{ user_email }}">
                                   <span class="icon is-small">
                                     <i class="fa fa-angle-left"></i>
                                   </span>
@@ -228,7 +234,7 @@
                                 <a class="button is-white" style="display: table-cell;">{{ target_date }}</a>
 
                                 <a style="display: table-cell;"
-                                   href="/?target_date={{ next_period_start }}&worker={{ worker }}"
+                                   href="/?target_date={{ next_period_start }}&worker={{ user_email }}"
                                    class="button">
                                   <span class="icon is-small">
                                    <i class="fa fa-angle-right"></i>
@@ -236,7 +242,6 @@
                                 </a>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -265,10 +270,10 @@
                             <div class="duration title is-4">00:00</div>
                         </div>
                         <form
-                                action="/time_tap?target_date={{ target_date }}&worker={{ worker }}"
+                                action="/time_tap?target_date={{ target_date }}&worker={{ user_email }}"
                                 method="post">
                             <input type="hidden" name="taskName" value="{{ task.name }}">
-                            <input type="hidden" name="worker" value="{{ worker }}">
+                            <input type="hidden" name="worker" value="{{ user_email }}">
                             <input type="hidden" name="taskDate" value="{{ target_date }}">
                         </form>
                     </div>
@@ -281,10 +286,10 @@
                             <div class="duration title is-4">{{ task.doses }}</div>
                         </div>
                         <form
-                                action="/count_tap?target_date={{ target_date }}&worker={{ worker }}"
+                                action="/count_tap?target_date={{ target_date }}&worker={{ user_email }}"
                                 method="post">
                             <input type="hidden" name="name" value="{{ task.name }}">
-                            <input type="hidden" name="worker" value="{{ worker }}">
+                            <input type="hidden" name="worker" value="{{ user_email }}">
                             <input type="hidden" name="taskDate" value="{{ target_date }}">
                         </form>
                     </div>
@@ -314,7 +319,7 @@
     let timeTapCssIdPrefix = "task";
     let medicationDoesTapCssIdPrefix = "medication_tap";
 
-    let worker = "{{worker}}";
+    let worker = "{{user_email}}";
     let selectedDate = "{{target_date}}";
 
     window.onload = function () {
