@@ -13,7 +13,7 @@ from starlette.templating import Jinja2Templates
 
 from auth import get_current_user
 from models import TimeTapDto, NoteTapDto, TimeTapStatisticsRequestDto, MedicationTapDto, MedicationDto
-from tap_service import fetch_time_taps, fetch_time_tap, fetch_all_workers, fetch_note_taps, \
+from tap_service import fetch_time_taps, fetch_time_tap, fetch_note_taps, \
     delete_note_tap, InvalidInputException, add_note_tap, add_time_tap, get_unused_time_tap_blocks_for_day, \
     get_medication_views, update_medication_tap, get_unused_medication_tap_blocks_for_day, add_medication
 from views import MainTemplateData
@@ -51,7 +51,6 @@ async def homepage(request: Request, target_date: Optional[datetime.date] = None
             time_taps=[],
             note_taps=[],
             medication_taps=[],
-            workers=fetch_all_workers(),
             previous_period_start=target_date + datetime.timedelta(days=-1),
             next_period_start=target_date + datetime.timedelta(days=1),
             user_email="",
@@ -59,18 +58,17 @@ async def homepage(request: Request, target_date: Optional[datetime.date] = None
     else:
         user_email = user["email"]
 
-        time_tap_views = fetch_time_taps(worker=user_email, target_date=target_date)
+        time_tap_views = fetch_time_taps(user_email=user_email, target_date=target_date)
         unused_time_tap_views = get_unused_time_tap_blocks_for_day([tap.name for tap in time_tap_views])
-        medication_tap_views = get_medication_views(worker=user_email, date=target_date)
+        medication_tap_views = get_medication_views(user_email=user_email, date=target_date)
         unused_medication_tap_views = get_unused_medication_tap_blocks_for_day(
             [tap.name for tap in medication_tap_views])
-        note_taps = fetch_note_taps(worker=user_email, date=target_date)
+        note_taps = fetch_note_taps(user_email=user_email, date=target_date)
         template_data = MainTemplateData(
             target_date=target_date,
             time_taps=time_tap_views + unused_time_tap_views,
             note_taps=note_taps,
             medication_taps=medication_tap_views + unused_medication_tap_views,
-            workers=fetch_all_workers(),
             previous_period_start=target_date + datetime.timedelta(days=-1),
             next_period_start=target_date + datetime.timedelta(days=1),
             user_email=user_email,
@@ -90,47 +88,47 @@ async def summary_page(request: Request):
     user = request.session.get('user')
     if user is None:
         return HTMLResponse('<a href="/login">Login with Google</a>')
-    worker = user["email"]
-    if worker == "":
+    user_email = user["email"]
+    if user_email == "":
         raise HTTPException(status_code=404)
     return templates.TemplateResponse(
         "summary.html",
         context={
             "request": request,
-            "worker": worker
+            "user_email": user_email
         }
     )
 
 
 @app.post("/time_tap")
 async def post_time_tap(time_tap: TimeTapDto, user_email: str = Depends(get_current_user)):
-    time_tap.worker = user_email
+    time_tap.user_email = user_email
     add_time_tap(time_tap, minutes=15)
 
-    return fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
+    return fetch_time_tap(name=time_tap.name, user_email=time_tap.user_email, target_date=time_tap.date)
 
 
 @app.delete("/time_tap")
 async def delete_time_tap(time_tap: TimeTapDto, user_email: str = Depends(get_current_user)):
-    time_tap.worker = user_email
-    tap = fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
+    time_tap.user_email = user_email
+    tap = fetch_time_tap(name=time_tap.name, user_email=time_tap.user_email, target_date=time_tap.date)
     if tap is not None and tap.duration <= 0:
         raise HTTPException(status_code=400, detail="Invalid input, cannot have negative total time")
 
     add_time_tap(time_tap, minutes=-15)
 
-    return fetch_time_tap(name=time_tap.name, worker=time_tap.worker, target_date=time_tap.date)
+    return fetch_time_tap(name=time_tap.name, user_email=time_tap.user_email, target_date=time_tap.date)
 
 
 @app.post("/note_tap")
 async def post_a_note(note: NoteTapDto, user_email: str = Depends(get_current_user)):
-    note.worker = user_email
+    note.user_email = user_email
     return add_note_tap(note)
 
 
 @app.delete("/note_tap")
 async def post_a_note(note: NoteTapDto, user_email: str = Depends(get_current_user)):
-    note.worker = user_email
+    note.user_email = user_email
     try:
         delete_note_tap(note)
     except InvalidInputException as e:
@@ -140,23 +138,23 @@ async def post_a_note(note: NoteTapDto, user_email: str = Depends(get_current_us
 
 @app.post("/medication_tap")
 async def post_time_tap(medication_tap: MedicationTapDto, user_email: str = Depends(get_current_user)):
-    medication_tap.worker = user_email
+    medication_tap.user_email = user_email
 
     update_medication_tap(medication_tap, dose_taken=1)
 
-    return get_medication_views(name=medication_tap.name, worker=medication_tap.worker, date=medication_tap.date)[0]
+    return get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
 
 
 @app.delete("/medication_tap")
 async def delete_time_tap(medication_tap: MedicationTapDto, user_email: str = Depends(get_current_user)):
-    medication_tap.worker = user_email
-    tap = get_medication_views(name=medication_tap.name, worker=medication_tap.worker, date=medication_tap.date)
+    medication_tap.user_email = user_email
+    tap = get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)
     if len(tap) == 0 or tap[0].doses <= 0:
         raise HTTPException(status_code=400, detail="Invalid input")
 
     update_medication_tap(medication_tap, dose_taken=-1)
 
-    return get_medication_views(name=medication_tap.name, worker=medication_tap.worker, date=medication_tap.date)[0]
+    return get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
 
 
 @app.post("/medication")
@@ -166,8 +164,8 @@ async def post_medication(medication: MedicationDto, assure_authenticated: str =
 
 @app.post("/statistics")
 async def time_tap_statistics(note: TimeTapStatisticsRequestDto, user_email: str = Depends(get_current_user)):
-    note.worker = user_email
-    return fetch_time_taps(worker=note.worker, first_date=note.first_date, last_date=note.last_date)
+    note.user_email = user_email
+    return fetch_time_taps(user_email=note.user_email, first_date=note.first_date, last_date=note.last_date)
 
 
 @app.get("/favicon.ico")

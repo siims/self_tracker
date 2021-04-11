@@ -34,7 +34,6 @@ class MainTemplateData:
     time_taps: List[TimeTapView]
     note_taps: List[NoteTapView]
     medication_taps: List[MedicationTapView]
-    workers: List[str]
     previous_period_start: datetime.date
     next_period_start: datetime.date
     user_email: Optional[str]

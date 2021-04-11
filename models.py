@@ -11,8 +11,8 @@ Base = declarative_base()
 
 class TimeTapDto(BaseModel):
     name: str
-    worker: str
     date: datetime.date
+    user_email: Optional[str]
 
 
 class MedicationDto(BaseModel):
@@ -21,7 +21,7 @@ class MedicationDto(BaseModel):
 
 class MedicationTapDto(BaseModel):
     name: str
-    worker: str
+    user_email: str
     date: datetime.date
 
 
@@ -29,12 +29,12 @@ class NoteTapDto(BaseModel):
     id: Optional[str]
     type: Optional[str]
     description: str
-    worker: str
+    user_email: str
     date: datetime.date
 
 
 class TimeTapStatisticsRequestDto(BaseModel):
-    worker: str
+    user_email: str
     first_date: datetime.date
     last_date: datetime.date
 
@@ -49,7 +49,7 @@ class AbstractTap(Base):
     __abstract__ = True
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    worker = Column(String(20), nullable=False, index=True)
+    user_email = Column(Text, nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)
     created = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
     is_deleted = Column(Boolean, default=False, index=True)
@@ -94,8 +94,8 @@ class MedicationTap(AbstractTap):
     medication = Column(Integer, ForeignKey('medication.id'))
 
 
-Index('time_tap_worker_x_date', TimeTap.worker, TimeTap.date)
-Index('time_tap_worker_x_date_x_name', TimeTap.worker, TimeTap.date, TimeTap.name)
+Index('time_tap_user_email_x_date', TimeTap.user_email, TimeTap.date)
+Index('time_tap_user_email_x_date_x_name', TimeTap.user_email, TimeTap.date, TimeTap.name)
 
 
 class NoteTap(AbstractTap):

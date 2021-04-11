@@ -112,7 +112,7 @@
             $.post("/time_tap", JSON.stringify({
                 "name": formData.name.value,
                 "date": formData.target_date.value,
-                "worker": formData.worker.value
+                "user_email": formData.user_email.value
             })).done((res) => {
                 formData.name.value = ""
                 window.location.reload();
@@ -132,7 +132,7 @@
             let request_payload = {
                 "description": formData.description.value,
                 "date": formData.date.value,
-                "worker": formData.worker.value
+                "user_email": formData.user_email.value
             };
             if (formData.type.value !== "") {
                 request_payload.type = formData.type.value
@@ -187,7 +187,7 @@
 
                                 <input class="input" name="name" type="text" placeholder="Task name">
                                 <input class="input" name="target_date" type="hidden" value="{{ target_date }}">
-                                <input class="input" name="worker" type="hidden" value="{{ user_email }}">
+                                <input class="input" name="user_email" type="hidden" value="{{ user_email }}">
 
                             </div>
                             <div class="control">
@@ -214,7 +214,7 @@
                                        placeholder="Note: ... slept a bit badly; feel tired" style="width: 70%">
                                 <input class="input" name="type" type="text" placeholder="sleep" style="width: 27%">
                                 <input class="input" name="date" type="hidden" value="{{ target_date }}">
-                                <input class="input" name="worker" type="hidden" value="{{ user_email }}">
+                                <input class="input" name="user_email" type="hidden" value="{{ user_email }}">
 
                             </div>
                             <div class="control">
@@ -226,7 +226,7 @@
                         <div class="field">
                             <div class="control" style="display: table; width: 100%;">
                                 <a class="button" style="display: table-cell;"
-                                   href="/?target_date={{ previous_period_start }}&worker={{ user_email }}">
+                                   href="/?target_date={{ previous_period_start }}&user_email={{ user_email }}">
                                   <span class="icon is-small">
                                     <i class="fa fa-angle-left"></i>
                                   </span>
@@ -234,7 +234,7 @@
                                 <a class="button is-white" style="display: table-cell;">{{ target_date }}</a>
 
                                 <a style="display: table-cell;"
-                                   href="/?target_date={{ next_period_start }}&worker={{ user_email }}"
+                                   href="/?target_date={{ next_period_start }}&user_email={{ user_email }}"
                                    class="button">
                                   <span class="icon is-small">
                                    <i class="fa fa-angle-right"></i>
@@ -270,10 +270,10 @@
                             <div class="duration title is-4">00:00</div>
                         </div>
                         <form
-                                action="/time_tap?target_date={{ target_date }}&worker={{ user_email }}"
+                                action="/time_tap?target_date={{ target_date }}&user_email={{ user_email }}"
                                 method="post">
                             <input type="hidden" name="taskName" value="{{ task.name }}">
-                            <input type="hidden" name="worker" value="{{ user_email }}">
+                            <input type="hidden" name="user_email" value="{{ user_email }}">
                             <input type="hidden" name="taskDate" value="{{ target_date }}">
                         </form>
                     </div>
@@ -286,10 +286,10 @@
                             <div class="duration title is-4">{{ task.doses }}</div>
                         </div>
                         <form
-                                action="/count_tap?target_date={{ target_date }}&worker={{ user_email }}"
+                                action="/count_tap?target_date={{ target_date }}&user_email={{ user_email }}"
                                 method="post">
                             <input type="hidden" name="name" value="{{ task.name }}">
-                            <input type="hidden" name="worker" value="{{ user_email }}">
+                            <input type="hidden" name="user_email" value="{{ user_email }}">
                             <input type="hidden" name="taskDate" value="{{ target_date }}">
                         </form>
                     </div>
@@ -319,7 +319,7 @@
     let timeTapCssIdPrefix = "task";
     let medicationDoesTapCssIdPrefix = "medication_tap";
 
-    let worker = "{{user_email}}";
+    let user_email = "{{user_email}}";
     let selectedDate = "{{target_date}}";
 
     window.onload = function () {
@@ -347,7 +347,7 @@
         function addClickHandlersToCountTasks(taskList, cssIdPrefix, clickHandler) {
             $.each(taskList, function (taskName, task) {
                 $(`#${cssIdPrefix}_${task.id}`).click(function (evt) {
-                    clickHandler(taskName, worker, selectedDate)
+                    clickHandler(taskName, user_email, selectedDate)
                 })
             });
         }
@@ -356,7 +356,7 @@
             $.each(taskList, function (taskName, task) {
                 $(`#${cssIdPrefix}_${task.id} .untap`).click(function (evt) {
                     evt.stopPropagation();
-                    clickHandler(taskName, worker, selectedDate)
+                    clickHandler(taskName, user_email, selectedDate)
                 })
             });
         }
@@ -368,13 +368,13 @@
                     let request_payload = {
                         "description": task.description,
                         "date": selectedDate,
-                        "worker": worker
+                        "user_email": user_email
                     };
                     if (task.type != null && task.type !== "") {
                         request_payload.type = task.type
                     }
                     $.ajax({
-                        url: "/note_tap?target_date=" + selectedDate + "&worker=" + worker,
+                        url: "/note_tap?target_date=" + selectedDate + "&user_email=" + user_email,
                         type: "DELETE",
                         data: JSON.stringify(request_payload),
                         success: () => window.location.reload()
@@ -383,55 +383,55 @@
             });
         }
 
-        function handleTimeTap(taskName, worker, date) {
-            if (worker === "") {
+        function handleTimeTap(taskName, user_email, date) {
+            if (user_email === "") {
                 return;
             }
             $.post("/time_tap", JSON.stringify({
                 "name": taskName,
                 "date": date,
-                "worker": worker
+                "user_email": user_email
             })).done(updateTask);
         }
 
-        function handleMedicationDoseTap(medication, worker, date) {
-            if (worker === "") {
+        function handleMedicationDoseTap(medication, user_email, date) {
+            if (user_email === "") {
                 return;
             }
             $.post("/medication_tap", JSON.stringify({
                 "name": medication,
                 "date": date,
-                "worker": worker
+                "user_email": user_email
             })).done(updateMedicationTap);
         }
 
-        function handleTimeUntap(taskName, worker, date) {
-            if (worker === "") {
+        function handleTimeUntap(taskName, user_email, date) {
+            if (user_email === "") {
                 return;
             }
             $.ajax({
-                url: "/time_tap?target_date=" + date + "&worker=" + worker,
+                url: "/time_tap?target_date=" + date + "&user_email=" + user_email,
                 type: "DELETE",
                 data: JSON.stringify({
                     "name": taskName,
                     "date": date,
-                    "worker": worker
+                    "user_email": user_email
                 }),
                 success: updateTask
             });
         }
 
-        function handleMedicationDoseUntap(taskName, worker, date) {
-            if (worker === "") {
+        function handleMedicationDoseUntap(taskName, user_email, date) {
+            if (user_email === "") {
                 return;
             }
             $.ajax({
-                url: `/medication_tap?target_date=${date}&worker=${worker}`,
+                url: `/medication_tap?target_date=${date}&user_email=${user_email}`,
                 type: "DELETE",
                 data: JSON.stringify({
                     "name": taskName,
                     "date": date,
-                    "worker": worker
+                    "user_email": user_email
                 }),
                 success: updateMedicationTap
             });

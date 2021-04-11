@@ -24,11 +24,11 @@ class InvalidInputException(Exception):
 
 
 def fetch_time_tap(
-        worker: Optional[str] = None,
+        user_email: Optional[str] = None,
         target_date: Optional[datetime.date] = None,
         name: Optional[str] = None
 ) -> Optional[TimeTapView]:
-    res = fetch_time_taps(worker=worker, target_date=target_date, name=name)
+    res = fetch_time_taps(user_email=user_email, target_date=target_date, name=name)
     if len(res) == 0:
         return None
     else:
@@ -36,7 +36,7 @@ def fetch_time_tap(
 
 
 def fetch_time_taps(
-        worker: Optional[str] = None,
+        user_email: Optional[str] = None,
         target_date: Optional[datetime.date] = None,
         first_date: Optional[datetime.date] = None,
         last_date: Optional[datetime.date] = None,
@@ -44,8 +44,8 @@ def fetch_time_taps(
 ) -> List[TimeTapView]:
     where = []
     group_by = [TimeTap.name]
-    if worker is not None:
-        where.append(TimeTap.worker == worker)
+    if user_email is not None:
+        where.append(TimeTap.user_email == user_email)
     if target_date is not None:
         where.append(TimeTap.date == target_date)
         group_by.append(TimeTap.date)
@@ -70,7 +70,7 @@ def fetch_time_taps(
 
 def add_time_tap(time_tap: TimeTapDto, minutes: int) -> None:
     new_tap = TimeTap(
-        worker=time_tap.worker,
+        user_email=time_tap.user_email,
         date=time_tap.date,
         name=time_tap.name,
         minutes=minutes
@@ -80,13 +80,13 @@ def add_time_tap(time_tap: TimeTapDto, minutes: int) -> None:
 
 
 def fetch_medication_taps(
-        worker: Optional[str] = None,
+        user_email: Optional[str] = None,
         date: Optional[datetime.date] = None,
         name: Optional[str] = None
 ) -> List[Any]:
     where = [MedicationTap.is_deleted == False]
-    if worker is not None:
-        where.append(MedicationTap.worker == worker)
+    if user_email is not None:
+        where.append(MedicationTap.user_email == user_email)
     if date is not None:
         where.append(MedicationTap.date == date)
     if name is not None:
@@ -96,11 +96,11 @@ def fetch_medication_taps(
 
 
 def get_medication_views(
-        worker: Optional[str] = None,
+        user_email: Optional[str] = None,
         date: Optional[datetime.date] = None,
         name: Optional[str] = None
 ) -> List[MedicationTapView]:
-    medication_taps = fetch_medication_taps(worker=worker, date=date, name=name)
+    medication_taps = fetch_medication_taps(user_email=user_email, date=date, name=name)
 
     return [
         MedicationTapView(name=tap["Medication"].name, doses=tap["MedicationTap"].doses)
@@ -111,14 +111,14 @@ def get_medication_views(
 def update_medication_tap(medication_tap: MedicationTapDto, dose_taken: int) -> MedicationTapView:
     medication = session.query(Medication).where(Medication.name == medication_tap.name).first()
     new_tap = session.query(MedicationTap).where(
-        MedicationTap.worker == medication_tap.worker,
+        MedicationTap.user_email == medication_tap.user_email,
         MedicationTap.date == medication_tap.date,
         MedicationTap.medication == medication.id
     ).one_or_none()
 
     if new_tap is None:
         new_tap = MedicationTap(
-            worker=medication_tap.worker,
+            user_email=medication_tap.user_email,
             date=medication_tap.date,
             doses=1,
             medication=medication.id)
@@ -152,14 +152,10 @@ def fetch_all_medication_names() -> List[str]:
     return [medication.name for medication in session.query(Medication).all()]
 
 
-def fetch_all_workers() -> List[str]:
-    return [task.worker for task in session.query(TimeTap.worker).group_by(TimeTap.worker).all()]
-
-
-def fetch_note_taps(worker: Optional[str] = None, date: Optional[datetime.date] = None) -> List[NoteTapView]:
+def fetch_note_taps(user_email: Optional[str] = None, date: Optional[datetime.date] = None) -> List[NoteTapView]:
     where = [NoteTap.is_deleted == False]
-    if worker is not None:
-        where.append(NoteTap.worker == worker)
+    if user_email is not None:
+        where.append(NoteTap.user_email == user_email)
     if date is not None:
         where.append(NoteTap.date == date)
     note_taps = session.query(NoteTap).where(
@@ -170,7 +166,7 @@ def fetch_note_taps(worker: Optional[str] = None, date: Optional[datetime.date] 
 
 def add_note_tap(note: NoteTapDto) -> NoteTapDto:
     new_tap = NoteTap(
-        worker=note.worker,
+        user_email=note.user_email,
         date=note.date,
         type=note.type,
         description=note.description,
@@ -180,7 +176,7 @@ def add_note_tap(note: NoteTapDto) -> NoteTapDto:
 
     return NoteTapDto(
         id=new_tap.id,
-        worker=new_tap.worker,
+        user_email=new_tap.user_email,
         date=new_tap.date,
         type=new_tap.type,
         description=new_tap.description,
@@ -188,7 +184,7 @@ def add_note_tap(note: NoteTapDto) -> NoteTapDto:
 
 
 def delete_note_tap(note: NoteTapDto):
-    where = [NoteTap.worker == note.worker, NoteTap.date == note.date, NoteTap.description == note.description,
+    where = [NoteTap.user_email == note.user_email, NoteTap.date == note.date, NoteTap.description == note.description,
              NoteTap.is_deleted == False]
     if note.type is None:
         where.append(NoteTap.type == note.type)

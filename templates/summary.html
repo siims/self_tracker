@@ -28,7 +28,7 @@
 
     let periodType = "week";
     let periodValue = 0; // 0 for current
-    let workerName = "{{worker}}";
+    let user_email = "{{user_email}}";
     let allTasksData = null
     let chart = null
 
@@ -173,10 +173,10 @@
 
 
     function requestTaskStatisticsForPeriod(startDate, endDate, callback) {
-        $.post("/statistics?worker=" + workerName, JSON.stringify({
+        $.post("/statistics", JSON.stringify({
             "first_date": startDate,
             "last_date": endDate,
-            "worker": workerName
+            "user_email": user_email
         })).done(callback);
     }
 
