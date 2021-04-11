@@ -24,6 +24,10 @@ log = logging.getLogger(__name__)
 app = FastAPI()
 
 config = Config(".env")
+if config.get("GOOGLE_CLIENT_ID", default=None) is None \
+        or config.get("GOOGLE_CLIENT_SECRET", default=None) is None \
+        or config.get("SESSION_SECRET", default=None) is None:
+    raise Exception("Configuration error. GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET or SESSION_SECRET not specified.")
 oauth = OAuth(config)
 oauth.register(
     name='google',
@@ -33,7 +37,7 @@ oauth.register(
     }
 )
 
-app.add_middleware(SessionMiddleware, secret_key="super-big-secret")
+app.add_middleware(SessionMiddleware, secret_key=config.get("SESSION_SECRET"))
 
 
 @app.get("/")
