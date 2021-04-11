@@ -130,8 +130,8 @@ def update_medication_tap(medication_tap: MedicationTapDto, dose_taken: int) -> 
     return MedicationTapView(name=medication_tap.name, doses=new_tap.doses)
 
 
-def get_unused_time_tap_blocks_for_day(used_time_tap_names: List[str]) -> List[TimeTapView]:
-    missing_tap_names = list(set(fetch_all_task_names()) - set(used_time_tap_names))
+def get_unused_time_tap_blocks_for_day(used_time_tap_names: List[str], user_email: str) -> List[TimeTapView]:
+    missing_tap_names = list(set(fetch_all_task_names_by_user(user_email)) - set(used_time_tap_names))
     unsused_time_tap_views = [TimeTapView(name=name, duration=0) for name in missing_tap_names]
     unsused_time_tap_views.sort(key=lambda x: x.name)
     return unsused_time_tap_views
@@ -144,8 +144,13 @@ def get_unused_medication_tap_blocks_for_day(used_medication_tap_names: List[str
     return unsused_medication_tap_views
 
 
-def fetch_all_task_names() -> List[str]:
-    return [task.name for task in session.query(TimeTap.name).group_by(TimeTap.name).all()]
+def fetch_all_task_names_by_user(user_email: str) -> List[str]:
+    return [task.name for task in
+            session.query(
+                TimeTap.name
+            ).where(
+                TimeTap.user_email == user_email
+            ).group_by(TimeTap.name).all()]
 
 
 def fetch_all_medication_names() -> List[str]:
@@ -201,4 +206,3 @@ def add_medication(medication: MedicationDto) -> None:
     new_medication = Medication(name=medication.name)
     session.add(new_medication)
     session.commit()
-

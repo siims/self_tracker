@@ -59,7 +59,7 @@ async def homepage(request: Request, target_date: Optional[datetime.date] = None
         user_email = user["email"]
 
         time_tap_views = fetch_time_taps(user_email=user_email, target_date=target_date)
-        unused_time_tap_views = get_unused_time_tap_blocks_for_day([tap.name for tap in time_tap_views])
+        unused_time_tap_views = get_unused_time_tap_blocks_for_day([tap.name for tap in time_tap_views], user_email)
         medication_tap_views = get_medication_views(user_email=user_email, date=target_date)
         unused_medication_tap_views = get_unused_medication_tap_blocks_for_day(
             [tap.name for tap in medication_tap_views])
@@ -142,7 +142,8 @@ async def post_time_tap(medication_tap: MedicationTapDto, user_email: str = Depe
 
     update_medication_tap(medication_tap, dose_taken=1)
 
-    return get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
+    return \
+    get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
 
 
 @app.delete("/medication_tap")
@@ -154,7 +155,8 @@ async def delete_time_tap(medication_tap: MedicationTapDto, user_email: str = De
 
     update_medication_tap(medication_tap, dose_taken=-1)
 
-    return get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
+    return \
+    get_medication_views(name=medication_tap.name, user_email=medication_tap.user_email, date=medication_tap.date)[0]
 
 
 @app.post("/medication")
